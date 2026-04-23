@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang='ja'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Astrea Stable</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:16px}
+.card{background:#222;padding:16px;border-radius:14px;margin-bottom:12px}
+button{padding:14px 16px;border:none;border-radius:12px;margin:4px;font-weight:700;font-size:16px}
+.green{background:#22c55e;color:#000}.blue{background:#38bdf8;color:#000}.yellow{background:#facc15;color:#000}
+input{width:100%;padding:12px;border-radius:10px;border:none;font-size:16px}
+li{margin:10px 0}
+</style>
+</head>
+<body>
+<h1>Astrea Stable</h1>
+
+<div class='card'>
+<input id='addr' placeholder='住所入力'>
+<button class='green' id='addBtn'>追加</button>
+</div>
+
+<div class='card'>
+<input type='file' id='img' multiple accept='image/*'>
+<button class='blue' id='ocrBtn'>一括OCR</button>
+</div>
+
+<div class='card'>
+<button class='green' id='farBtn'>遠い順</button>
+<button class='blue' id='nearBtn'>近い順</button>
+<button class='yellow' id='mapBtn'>Googleマップ開始</button>
+</div>
+
+<div class='card'>
+<ul id='list'></ul>
+</div>
+
+<script>
+const list=document.getElementById('list');
+let routes=JSON.parse(localStorage.getItem('astrea_routes')||'[]');
+
+function save(){
+ localStorage.setItem('astrea_routes',JSON.stringify(routes));
+ render();
+}
+
+function render(){
+ list.innerHTML='';
+ routes.forEach((r,i)=>{
+   const li=document.createElement('li');
+   li.textContent=(i+1)+'. '+r;
+   list.appendChild(li);
+ });
+}
+
+document.getElementById('addBtn').addEventListener('click',()=>{
+ const v=document.getElementById('addr').value.trim();
+ if(!v) return;
+ routes.push(v);
+ document.getElementById('addr').value='';
+ save();
+});
+
+document.getElementById('farBtn').addEventListener('click',()=>{
+ routes.reverse();
+ save();
+});
+
+document.getElementById('nearBtn').addEventListener('click',()=>{
+ routes.sort((a,b)=>a.localeCompare(b,'ja'));
+ save();
+});
+
+document.getElementById('mapBtn').addEventListener('click',()=>{
+ if(routes.length===0){location.href='https://www.google.com/maps';return;}
+ let dest=routes[routes.length-1];
+ let url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(dest);
+ if(routes.length>1){
+   url+='&waypoints='+encodeURIComponent(routes.slice(0,-1).join('|'));
+ }
+ location.href=url;
+});
+
+document.getElementById('ocrBtn').addEventListener('click', async ()=>{
+ const files=document.getElementById('img').files;
+ for(const f of files){
+   try{
+     const r=await Tesseract.recognize(f,'jpn+eng');
+     const line=r.data.text.split('\n').find(x=>/(都|道|府|県).*(市|区|町|村)/.test(x));
+     if(line) routes.push(line.trim());
+   }catch(e){}
+ }
+ save();
+});
+
+render();
+</script>
+</body></html>
